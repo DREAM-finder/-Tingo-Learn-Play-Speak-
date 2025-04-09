@@ -42,14 +42,20 @@ jobs:
       uses: actions/github-script@v6
       with:
         script: |
-          const { status } = context.job
-          const emoji = status === 'success' ? '✅' : '❌'
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: `${emoji} Tests ${status}`
-          })
+          const { status } = context.job;
+          const emoji = status === 'success' ? '✅' : '❌';
+          const issue_number = context.payload.pull_request ? context.payload.pull_request.number : context.issue.number;
+          
+          if (!issue_number) {
+            core.warning('Issue or pull request number not found. Skipping comment.');
+          } else {
+            github.rest.issues.createComment({
+              issue_number: issue_number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `${emoji} Tests ${status}`
+            });
+          }
 
   deploy:
     needs: test
