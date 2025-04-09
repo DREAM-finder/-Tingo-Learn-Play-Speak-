@@ -2,12 +2,12 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]  # Added develop branch
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
 
 jobs:
-  build-and-test:
+  test:
     runs-on: ubuntu-latest
     
     steps:
@@ -17,6 +17,7 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: '18.x'
+        cache: 'npm'  # Added caching
         
     - name: Install Dependencies
       run: npm install
@@ -27,14 +28,22 @@ jobs:
     - name: Build Application
       run: npm run build
       
-    - name: Cache build artifacts
-      uses: actions/cache@v3
+    - name: Report Status
+      if: always()
+      uses: actions/github-script@v6
       with:
-        path: build/
-        key: ${{ github.sha }}
+        script: |
+          const { status } = context.job
+          const emoji = status === 'success' ? '✅' : '❌'
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: `${emoji} Tests ${status}`
+          })
 
   deploy:
-    needs: build-and-test
+    needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     
